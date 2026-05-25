@@ -1,0 +1,139 @@
+================================================================================
+ Install instructions: glot500-Eval-py39  (Python 3.9 evaluation env)
+================================================================================
+
+This is a self-contained recipe to set up the Glot500 evaluation environment
+on Python 3.9. It covers the NER / POS / Sentence-Retrieval / Round-Trip eval
+scripts and the HuggingFace-based PAN-X downloader.
+
+
+--------------------------------------------------------------------------------
+1) Create the conda environment
+--------------------------------------------------------------------------------
+
+    conda create -n glot500-Eval-py39 python=3.9 -y
+    conda activate glot500-Eval-py39
+    python -m pip install --upgrade pip setuptools wheel
+
+
+--------------------------------------------------------------------------------
+2) Install pinned packages
+--------------------------------------------------------------------------------
+
+(a) Install PyTorch FIRST from the official wheel index.
+    Pick the cuXXX build matching your NVIDIA driver. `cu118` is a safe modern
+    default on most current GPUs (driver >= 520). Check yours with `nvidia-smi`
+    -> "CUDA Version: X.Y" in the top-right corner.
+
+    # CUDA 11.8  (recommended default)
+    pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+
+    # CUDA 11.7  (older drivers)
+    pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cu117
+
+    # CPU only  (no GPU available)
+    pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+
+(b) Install everything else from the requirements file:
+
+    pip install -r evaluation/requirements_py39.txt
+
+(c) FAISS (for sentence-retrieval evaluation). Choose ONE:
+
+    pip install faiss-cpu==1.7.4
+    # or, if you have a matching CUDA toolkit installed system-wide:
+    pip install faiss-gpu==1.7.2
+
+(d) IDE tooling for VSCode's Interactive Window + modern debugger:
+
+    pip install ipykernel debugpy
+
+    Why:
+      * `ipykernel`  - registers this env as a Jupyter kernel so the VSCode
+                       Interactive Window (and any Jupyter front-end) can run
+                       cells against the glot500-Eval-py39 interpreter.
+      * `debugpy`    - the modern Python debug adapter VSCode uses (the
+                       successor to ptvsd). Required to set breakpoints and
+                       step through eval scripts from VSCode.
+
+    Optional: explicitly register the kernel with a friendly display name:
+        python -m ipykernel install --user \
+            --name glot500-eval-py39 \
+            --display-name "Python 3.9 (glot500-Eval-py39)"
+
+(e) Verify:
+
+    python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+    python -c "import transformers, datasets, sklearn, seqeval; print('ok')"
+
+
+--------------------------------------------------------------------------------
+3) requirements_py39.txt  (save next to this file)
+--------------------------------------------------------------------------------
+
+Path:  evaluation/requirements_py39.txt
+Contents:
+
+    # Glot500 evaluation env - Python 3.9
+    # Install torch separately from the PyTorch wheel index BEFORE this file.
+    # Install faiss-cpu (or faiss-gpu) separately AFTER this file.
+
+    transformers==4.24.0
+    tokenizers==0.13.3
+    huggingface_hub==0.16.4
+    datasets==2.7.1
+    sentencepiece==0.1.99
+
+    numpy==1.24.4
+    scipy==1.10.1
+    pandas==1.5.3
+    scikit-learn==1.3.2
+    matplotlib==3.7.5
+    networkx==3.1
+
+    seqeval==1.2.2
+    sacrebleu==2.3.1
+    regex==2023.10.3
+    tqdm==4.66.1
+    PyYAML==6.0.1
+    Requests==2.31.0
+    packaging>=22.0
+    protobuf==3.20.3
+
+
+--------------------------------------------------------------------------------
+4) Optional extras
+--------------------------------------------------------------------------------
+
+* NVIDIA Apex (only if a script imports `apex`):
+
+    git clone https://github.com/NVIDIA/apex
+    cd apex
+    pip install -v --disable-pip-version-check --no-build-isolation \
+        --config-settings "--build-option=--cpp_ext" \
+        --config-settings "--build-option=--cuda_ext" ./
+
+  Requires the same CUDA toolkit version your torch build was compiled against.
+
+* `bitsandbytes` (only for 8-bit inference experiments):
+
+    pip install bitsandbytes==0.41.3
+
+
+--------------------------------------------------------------------------------
+5) Final sanity check
+--------------------------------------------------------------------------------
+
+    python - <<'PY'
+    import torch, transformers, datasets, sklearn, scipy, numpy, pandas, seqeval
+    print("torch       :", torch.__version__, "cuda:", torch.cuda.is_available())
+    print("transformers:", transformers.__version__)
+    print("datasets    :", datasets.__version__)
+    print("sklearn     :", sklearn.__version__)
+    print("numpy       :", numpy.__version__)
+    print("pandas      :", pandas.__version__)
+    PY
+
+If every import succeeds (and CUDA is detected when expected), the
+glot500-Eval-py39 env is ready to run the evaluation scripts under
+evaluation/{tagging, retrieval, round-trip, text_classification, download_data}.

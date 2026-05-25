@@ -1,0 +1,24 @@
+__pycache__
+nohup.out
+modeling/wandb
+.nfs*
+*.log
+evaluation/download_data/download
+
+# Model checkpoints (too large for GitHub - keep locally only)
+best_model.pt
+*.pt
+*.bin
+*.safetensors
+
+# Downloaded data archives / extracted data
+evaluation/download_data/main.zip
+evaluation/download_data/download/
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,59 @@
+# Glot500 evaluation requirements - cleaned for `pip install -r` from PyPI.
+#
+# Lines commented out cannot be installed by plain pip from PyPI as written.
+# Handle them manually after the rest succeeds, and only if needed.
+#
+# Python version: 3.6 (per Glot500 README - evaluation env must be Python 3.6
+# due to package conflicts with the main env). The original upstream pins for
+# torch==2.0.1 and scikit_learn==1.2.2 cannot be satisfied on Python 3.6
+# (both require Python >= 3.8), so they are downgraded below to the newest
+# releases that ship cp36 wheels.
+#       conda create -n Glot500-Eval python=3.6
+#       conda activate Glot500-Eval
+#       pip install -r requirements_clean.txt
+
+# --- Packages NOT installable from PyPI as written -------------------------
+
+# apex==0.1
+#   NVIDIA Apex is not on PyPI. Build from source only if your evaluation
+#   scripts actually import apex:
+#       git clone https://github.com/NVIDIA/apex
+#       cd apex
+#       pip install -v --disable-pip-version-check --no-build-isolation \
+#         --config-settings "--build-option=--cpp_ext" \
+#         --config-settings "--build-option=--cuda_ext" ./
+
+# faiss==1.7.1
+#   PyPI publishes FAISS as `faiss-cpu` / `faiss-gpu`, not `faiss`.
+#   Replace with:  pip install faiss-cpu==1.7.4
+
+# ~orch==1.8.1+cu111
+#   Almost certainly a typo for `torch==1.8.1+cu111` in the upstream file.
+#   This is the real torch pin for the Python 3.6 evaluation env (the
+#   `torch==2.0.1` line below it is inconsistent and would have failed on
+#   Python 3.6 anyway). The `+cu111` build is hosted on the PyTorch wheel
+#   index, not PyPI, so install it separately - see Notes below.
+
+# --- Packages installable from PyPI ----------------------------------------
+
+matplotlib==3.3.4
+networkx==1.11
+numpy==1.19.5
+pandas==1.1.5
+ptvsd==4.3.2
+regex==2021.11.2
+scikit_learn==0.24.2   # was 1.2.2; that needs Python >= 3.8. 0.24.2 is the last sklearn with cp36 wheels.
+scipy==1.5.4
+seqeval==1.2.2
+# torch: see Notes - install separately from the PyTorch index, not PyPI.
+tqdm==4.62.3
+transformers==4.18.0
+sentencepiece==0.1.97
+
+# --- Notes -----------------------------------------------------------------
+# - Install torch separately BEFORE running `pip install -r requirements_clean.txt`,
+#   using the PyTorch wheel index (the `+cuXXX` builds are not on PyPI):
+#       pip install torch==1.8.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+#   For CPU-only: `pip install torch==1.10.2` (last torch with cp36 wheels).
+# - networkx==1.11 is very old (2016). If you hit install or API issues,
+#   try a newer 2.x release - most scripts using basic graph ops still work.
