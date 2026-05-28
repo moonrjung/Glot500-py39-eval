@@ -20,6 +20,9 @@ https://huggingface.co/models?filter=fill-mask
 """
 # You can also adapt this script on your own masked language modeling task. Pointers for this are left as comments.
 
+#MJ: it's the script that produces Glot500-m by continued MLM pretraining of XLM-R on the Glot500-C corpus. 
+# It's a lightly-customized copy of HuggingFace's official run_mlm.py.
+
 import logging
 import math
 import os
@@ -40,9 +43,21 @@ from transformers import (CONFIG_MAPPING, MODEL_FOR_MASKED_LM_MAPPING,
 from transformers.trainer_utils import get_last_checkpoint
 
 logger = logging.getLogger(__name__)
+
+#MJ: MODEL_FOR_MASKED_LM_MAPPING = {
+#     "bert":         BertForMaskedLM,
+#     "roberta":      RobertaForMaskedLM,
+#     "xlm-roberta":  XLMRobertaForMaskedLM,   # ← chosen for xlm-roberta-base
+#     "albert":       AlbertForMaskedLM,
+#     # ... and so on
+# }
+
+
 MODEL_CONFIG_CLASSES = list(MODEL_FOR_MASKED_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
+#MJ: => "model_type" field — for xlm-roberta-base it says "xlm-roberta".
 
+#MJ: Both are plain Python @dataclass classes — they don't execute anything, they just declare what arguments the script accepts in a structured, typed way.
 
 @dataclass
 class ModelArguments:
@@ -201,13 +216,36 @@ def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
+
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+
+    # HfArgumentParser lets you run the script in two ways:
+
+    # With CLI flags (the .sh does this).
+    # With a single JSON file argument that contains all the settings:
+
+    # python run.py config.json
+    # where config.json is:
+
+    # {
+    # "model_name_or_path": "xlm-roberta-base",
+    # "train_file": "/data/glot500c.txt",
+    # "tokenizer_name": "/tok/glot500-spm",
+    # "output_dir": "/runs/glot500-base",
+    # "per_device_train_batch_size": 12,
+    # "fp16": true,
+    # "do_train": true,
+    # "num_train_epochs": 100
+    # }
+
+
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+        #MJ: 
 
     # Setup logging
     logging.basicConfig(
@@ -345,6 +383,12 @@ def main():
         )
 
     if model_args.model_name_or_path:
+        #MJ: Loads a pretrained checkpoint as the starting point (not from scratch).
+        #MJ: Auto* in HuggingFace transformers is a factory pattern — a generic dispatcher 
+        # that figures out which concrete model class to instantiate based on the checkpoint name or config you give it. The word "Auto" means "automatically pick the right class for you."
+
+
+
         model = AutoModelForMaskedLM.from_pretrained(
             model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -360,6 +404,12 @@ def main():
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
     embedding_size = model.get_input_embeddings().weight.shape[0]
+
+    #MJ:  This is the Glot500-specific bit. When the new tokenizer has more tokens than XLM-R's original 250K vocab '
+    # '(Glot500 expands the SentencePiece tokenizer to cover 500+ languages), the embedding matrix is resized '
+    # '— new rows are initialized for the new vocabulary, old rows reused.'
+    # ' That's exactly the trick the Glot500 paper describes for vocabulary expansion
+
     if len(tokenizer) > embedding_size:
         logger.info("New vocabulary size: %s" % len(tokenizer))
         model.resize_token_embeddings(len(tokenizer))
@@ -478,6 +528,9 @@ def main():
     # Data collator
     # This one will take care of randomly masking the tokens.
     pad_to_multiple_of_8 = data_args.line_by_line and training_args.fp16 and not data_args.pad_to_max_length
+
+    #MJ: uilds the masked-token batches. mlm_probability default = 0.15 = the canonical BERT/RoBERTa MLM mask rate.
+
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer,
         mlm_probability=data_args.mlm_probability,

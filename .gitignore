@@ -16,9 +16,20 @@ evaluation/download_data/main.zip
 evaluation/download_data/download/
 
 # IDE
-.vscode/
+#.vscode/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+
+# Large corpora and caches (kept local, too big for GitHub)
+data/
+cache/
+
+# Tokenizer build artifacts (regenerable via tokenization/train.sh)
+tokenization/output/
+
+# Accidental / typo file
+NSTALL_Glot500_py39.txt
+
